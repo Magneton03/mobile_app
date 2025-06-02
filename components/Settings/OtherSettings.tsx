@@ -8,6 +8,10 @@ import { WebSpeechAPIDemo } from "../Demos/WebSpeechAPIDemo";
 import { RecordUsingExpoAvDemo } from "../Demos/RecordUsingExpoAvDemo";
 import { TranscribeRemoteAudioFile } from "../Demos/TranscribeRemoteAudioFile";
 import { AudioPlayer } from "../Demos/AudioPlayer";
+import { RecordingControls } from "../Recording/RecordingControls";
+import { RecordingList } from "../Recording/RecordingList";
+import { TranscriptionScreen } from "../Transcription/TranscriptionScreen";
+import { TranscriptionControls } from "../Recording/TranscriptionControls";
 
 interface Props {
   value: ExpoSpeechRecognitionOptions;
@@ -19,6 +23,8 @@ interface Props {
 
 export function OtherSettings({ value: settings, onChange: handleChange }: Props) {
   const [recordingPath, setRecordingPath] = useState<string | null>(null);
+  const [selectedRecording, setSelectedRecording] = useState<{ uri: string; name: string } | null>(null);
+  const [currentView, setCurrentView] = useState<"main" | "transcription">("main");
 
   useSpeechRecognitionEvent("audiostart", (event) => {
     console.log("Recording started for file:", event.uri);
@@ -29,8 +35,57 @@ export function OtherSettings({ value: settings, onChange: handleChange }: Props
     setRecordingPath(event.uri);
   });
 
+  const handleRecordingComplete = (uri: string) => {
+    setRecordingPath(uri);
+    console.log("録音完了:", uri);
+  };
+
+  const handleSelectRecording = (uri: string, name: string) => {
+    setSelectedRecording({ uri, name });
+    setCurrentView("transcription");
+  };
+
+  const handleBackToMain = () => {
+    setCurrentView("main");
+    setSelectedRecording(null);
+  };
+
+  const handleTranscriptionStart = (recording: any) => {
+    setSelectedRecording({ uri: recording.uri, name: recording.name });
+    setCurrentView("transcription");
+  };
+
+  if (currentView === "transcription" && selectedRecording) {
+    return (
+      <TranscriptionScreen
+        audioUri={selectedRecording.uri}
+        fileName={selectedRecording.name}
+        onBack={handleBackToMain}
+      />
+    );
+  }
+
   return (
     <View style={styles.gap1}>
+      {/* 録音セクション */}
+      <View style={styles.recordingSection}>
+        <Text style={styles.sectionTitle}>🎙️ 音声録音</Text>
+        <Text style={styles.sectionDescription}>
+          音声を録音してローカルに保存し、文字起こしを行うことができます。
+        </Text>
+        <RecordingControls onRecordingComplete={handleRecordingComplete} />
+      </View>
+
+      {/* 文字起こしセクション */}
+      <TranscriptionControls onTranscriptionStart={handleTranscriptionStart} />
+
+      {/* 録音ファイル一覧セクション */}
+      <View style={styles.recordingSection}>
+        <Text style={styles.sectionTitle}>📁 録音ファイル管理</Text>
+        <RecordingList onSelectRecording={handleSelectRecording} />
+      </View>
+
+      {/* 既存のパーミッションボタン */}
       <View style={[styles.row, styles.gap1, styles.flexWrap]}>
         <BigButton
           title="Get permissions"
@@ -218,5 +273,28 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
+  },
+  recordingSection: {
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginBottom: 8,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 16,
+    lineHeight: 20,
   },
 });
